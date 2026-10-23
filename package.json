@@ -1,0 +1,15 @@
+{
+  "name": "metricmind",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MetricMind —— 计划先行、受控工具计算、证据链与数字审计的 AI 数据分析工作台",
+  "scripts": {
+    "dev:web": "pnpm --dir frontend dev",
+    "build:web": "pnpm --dir frontend build",
+    "typecheck:web": "pnpm --dir frontend typecheck",
+    "test:web": "pnpm --dir frontend test --run",
+    "e2e": "pnpm --dir frontend e2e",
+    "install:web": "pnpm --dir frontend install"
+  },
+  "packageManager": "pnpm@11.28.5"
+}

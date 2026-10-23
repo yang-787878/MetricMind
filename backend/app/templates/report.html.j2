@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{ report.title }}</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --surface: #ffffff; --surface-2: #fbfcfd; --surface-3: #f2f4f7;
+    --border: #e4e7ec; --border-strong: #d0d5dd;
+    --text: #101828; --text-secondary: #475467; --text-muted: #667085;
+    --brand-50: #eef2ff; --brand-600: #3452c4;
+    --success-50: #ecfdf3; --success-600: #067647;
+    --warning-50: #fffaeb; --warning-600: #b54708;
+    --danger-50: #fef3f2; --danger-600: #d92d20;
+    --grid: #eaecf0;
+    --chart-1: #3452c4; --chart-2: #0e9384; --chart-3: #b54708;
+    --chart-4: #6941c6; --chart-5: #175cd3; --chart-6: #667085;
+    --font-sans: "Geist Variable", Inter, ui-sans-serif, system-ui, "Segoe UI",
+      "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 48px; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: 14px; line-height: 22px;
+  }
+  .page { max-width: 880px; margin: 0 auto; }
+  header { margin-bottom: 24px; }
+  h1 { font-size: 26px; line-height: 34px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; line-height: 24px; margin: 32px 0 12px; }
+  h3 { font-size: 14px; line-height: 22px; margin: 0 0 4px; }
+  .meta { color: var(--text-muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  .badge {
+    display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 500;
+  }
+  .badge-live { background: var(--success-50); color: var(--success-600); }
+  .badge-demo { background: var(--warning-50); color: var(--warning-600); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .headline { font-size: 15px; line-height: 24px; margin: 16px 0 0; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .kpi .label { font-size: 12px; color: var(--text-muted); }
+  .kpi .value { font-size: 22px; line-height: 30px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .kpi .unit { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .chart { margin-top: 12px; }
+  .chart .subtitle { font-size: 12px; color: var(--text-muted); margin: 2px 0 8px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart .source { font-size: 11px; color: var(--text-muted); margin-top: 8px; font-family: var(--font-mono); }
+  .claim { margin-top: 16px; }
+  .claim .body { margin: 0 0 6px; }
+  .evidence { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--font-mono); font-size: 11px; background: var(--surface-3);
+    border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; color: var(--text-secondary);
+  }
+  .status-supported { color: var(--success-600); }
+  .status-unsupported { color: var(--danger-600); }
+  .status-unverifiable { color: var(--warning-600); }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 500; color: var(--text-secondary); }
+  .mono { font-family: var(--font-mono); font-size: 11px; word-break: break-all; }
+  ul { margin: 8px 0 0; padding-left: 20px; }
+  li { margin: 4px 0; }
+  .limitation { border-left: 2px solid var(--warning-600); padding: 2px 0 2px 10px; color: var(--text-secondary); margin: 8px 0; }
+  .quality { display: flex; gap: 8px; align-items: baseline; margin: 6px 0; font-size: 12px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot-warning { background: var(--warning-600); }
+  .dot-error { background: var(--danger-600); }
+  .dot-info { background: var(--brand-600); }
+  footer { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 12px; font-size: 11px; color: var(--text-muted); }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .card, .kpi { break-inside: avoid; }
+    h2 { break-after: avoid; }
+    svg { filter: grayscale(1); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>{{ report.title }}</h1>
+    <div class="meta">
+      <span class="badge {{ 'badge-live' if report.mode == 'live' else 'badge-demo' }}">
+        {{ 'Live model' if report.mode == 'live' else 'Demo mode' }}
+      </span>
+      <span>生成时间 {{ generated_at }}</span>
+      {% if coverage is not none %}<span>数字审计覆盖率 {{ coverage }}</span>{% endif %}
+      {% if dataset_name %}<span>数据集 {{ dataset_name }}</span>{% endif %}
+      <span>状态 {{ report.status }}</span>
+    </div>
+    <p class="headline">{{ report.headline }}</p>
+  </header>
+
+  {% if report.kpis %}
+  <section class="kpis">
+    {% for kpi in report.kpis %}
+    <div class="kpi">
+      <div class="label">{{ kpi.label }}</div>
+      <div class="value">{{ kpi.display_value or kpi.value }}</div>
+      <div class="unit">{{ {'CNY': '人民币', 'ratio': '比率', 'count': '条数'}.get(kpi.unit, kpi.unit or '—') }}</div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if charts %}
+  <h2>图表</h2>
+  {% for chart in charts %}
+  <section class="card chart">
+    <h3>{{ chart.spec.title }}</h3>
+    {% if chart.spec.subtitle %}<p class="subtitle">{{ chart.spec.subtitle }}</p>{% endif %}
+    {{ chart.svg }}
+    <p class="source">来源 result_id: {{ chart.spec.source.result_id }} · 工具 {{ chart.spec.source.tool }}
+      · {{ chart.spec.source.row_count }} 行{% if chart.spec.source.truncated %}（已截断）{% endif %}</p>
+    {% if chart.spec.notes %}<p class="subtitle">{{ chart.spec.notes | join('；') }}</p>{% endif %}
+  </section>
+  {% endfor %}
+  {% endif %}
+
+  {% if report.sections %}
+  <h2>结论</h2>
+  {% for section in report.sections %}
+  <section class="card claim">
+    <h3>{{ loop.index }}. {{ section.heading }}{% if section.degraded %} <span class="status-unsupported">（证据不足，已降级）</span>{% endif %}</h3>
+    <p class="body">{{ section.body }}</p>
+    {% if section.evidence_ids %}
+    <div class="evidence">
+      {% for evidence_id in section.evidence_ids %}<span class="chip">{{ evidence_id }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+  {% endif %}
+
+  {% if report.claims %}
+  <h2>数字核验</h2>
+  <table>
+    <thead><tr><th>结论</th><th>声明值</th><th>证据</th><th>状态</th></tr></thead>
+    <tbody>
+      {% for claim in report.claims %}
+      <tr>
+        <td>{{ claim.text }}</td>
+        <td class="mono">{% if claim.display_numbers %}{{ claim.display_numbers | join('，') }}{% else %}{% for number in claim.numbers %}{{ number.value }}{{ number.unit }}{% if not loop.last %}，{% endif %}{% endfor %}{% endif %}</td>
+        <td class="mono">{{ claim.evidence_ids | join(', ') or '—' }}</td>
+        <td class="status-{{ claim.status }}">{{ claim.status }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if report.methodology %}
+  <h2>方法论与口径</h2>
+  <table>
+    <thead><tr><th>步骤</th><th>说明</th><th>工具</th><th>口径 / SQL</th></tr></thead>
+    <tbody>
+      {% for item in report.methodology %}
+      <tr>
+        <td class="mono">{{ item.step_id }}</td>
+        <td>{{ item.description }}</td>
+        <td class="mono">{{ item.tool }}</td>
+        <td class="mono">{{ item.formula or item.sql or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if report.data_quality %}
+  <h2>数据质量</h2>
+  <div class="card">
+    {% for note in report.data_quality %}
+    <div class="quality">
+      <span class="dot dot-{{ note.severity }}"></span>
+      <span class="mono">{{ note.code }}</span>
+      <span>{{ note.message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if report.limitations %}
+  <h2>局限性</h2>
+  {% for item in report.limitations %}
+  <p class="limitation">{{ item }}</p>
+  {% endfor %}
+  {% endif %}
+
+  {% if report.next_steps %}
+  <h2>后续建议</h2>
+  <ul>{% for item in report.next_steps %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <footer>
+    由 MetricMind 生成 · 模式 {{ report.mode }} · 所有数值来自工具执行结果，可回溯至 result_id
+  </footer>
+</div>
+</body>
+</html>

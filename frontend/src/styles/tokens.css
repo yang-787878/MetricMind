@@ -1,0 +1,103 @@
+/*
+ * 设计 Token 唯一来源。规则：
+ * 1. 任何页面/组件不得自定义色值、圆角、阴影，只能引用这里。
+ * 2. 每个颜色同时给出 hex 与 `*-rgb` 三元组：hex 给内联 SVG / 导出报告用，
+ *    三元组让 Tailwind 的 `/透明度` 写法（如 ring-brand-500/40）生效。
+ * 3. 字号/行高在 tailwind.config.ts 里映射为 micro..h1，禁止 text-lg 散用。
+ */
+:root {
+  /* --- 表面与描边 --- */
+  --bg: #f7f8fa;
+  --bg-rgb: 247 248 250;
+  --surface: #ffffff;
+  --surface-rgb: 255 255 255;
+  --surface-2: #fbfcfd;
+  --surface-2-rgb: 251 252 253;
+  --surface-3: #f2f4f7;
+  --surface-3-rgb: 242 244 247;
+  --border: #e4e7ec;
+  --border-rgb: 228 231 236;
+  --border-strong: #d0d5dd;
+  --border-strong-rgb: 208 213 221;
+
+  /* --- 文本 --- */
+  --text: #101828;
+  --text-rgb: 16 24 40;
+  --text-secondary: #475467;
+  --text-secondary-rgb: 71 84 103;
+  --text-muted: #667085;
+  --text-muted-rgb: 102 112 133;
+  --text-inverse: #ffffff;
+  --text-inverse-rgb: 255 255 255;
+
+  /* --- 品牌（克制靛蓝） --- */
+  --brand-50: #eef2ff;
+  --brand-50-rgb: 238 242 255;
+  --brand-100: #e0e7ff;
+  --brand-100-rgb: 224 231 255;
+  --brand-500: #4763d8;
+  --brand-500-rgb: 71 99 216;
+  --brand-600: #3452c4;
+  --brand-600-rgb: 52 82 196;
+  --brand-700: #2a429f;
+  --brand-700-rgb: 42 66 159;
+
+  /* --- 语义状态 --- */
+  --success-600: #067647;
+  --success-600-rgb: 6 118 71;
+  --success-50: #ecfdf3;
+  --success-50-rgb: 236 253 243;
+  --warning-600: #b54708;
+  --warning-600-rgb: 181 71 8;
+  --warning-50: #fffaeb;
+  --warning-50-rgb: 255 250 235;
+  --danger-600: #d92d20;
+  --danger-600-rgb: 217 45 32;
+  --danger-50: #fef3f2;
+  --danger-50-rgb: 254 243 242;
+  --teal-600: #0e9384;
+  --teal-600-rgb: 14 147 132;
+  --teal-50: #f0fdf9;
+  --teal-50-rgb: 240 253 249;
+
+  /* --- 图表序列色（6 色，按序使用，不随意取色） --- */
+  --chart-1: #3452c4;
+  --chart-1-rgb: 52 82 196;
+  --chart-2: #0e9384;
+  --chart-2-rgb: 14 147 132;
+  --chart-3: #b54708;
+  --chart-3-rgb: 181 71 8;
+  --chart-4: #6941c6;
+  --chart-4-rgb: 105 65 198;
+  --chart-5: #175cd3;
+  --chart-5-rgb: 23 92 211;
+  --chart-6: #667085;
+  --chart-6-rgb: 102 112 133;
+  /* 图表网格线专用（比 --border 更浅，保证与数据线对比） */
+  --grid: #eaecf0;
+  --grid-rgb: 234 236 240;
+
+  /* --- 圆角 --- */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-pill: 999px;
+
+  /* --- 阴影 --- */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+  --shadow-md: 0 4px 12px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+
+  /* --- 字体 --- */
+  --font-sans: 'Geist Variable', Inter, ui-sans-serif, system-ui, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* --- 布局 --- */
+  --rail-w: 264px;
+  --rail-w-collapsed: 60px;
+  --panel-w: 380px;
+  --content-max: 1440px;
+
+  /* --- 间距刻度：4 的倍数，只允许 4/8/12/16/20/24/32/40/56 --- */
+}

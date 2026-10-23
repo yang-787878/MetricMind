@@ -1,0 +1,42 @@
+# 构建上下文是仓库根（两个镜像共用），这里把不该进镜像的东西挡掉。
+# 目标：上下文尽量小、密钥绝不入镜像、本地运行数据不覆盖容器的空数据目录。
+
+# --- 版本控制与本地元数据 ---
+.git
+.gitignore
+.dev-logs/
+.dev-pids.json
+.tmp/
+.workbuddy/
+docs/
+README.md
+scripts/
+.pnpm-store/
+
+# --- 密钥：任何形态的 .env 都不入镜像 ---
+.env
+.env.*
+.env.local
+backend/.env
+backend/.env.*
+
+# --- python 本地环境与缓存 ---
+backend/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+backend/pytest-cache-files-*/
+backend/tests/_work/
+backend/.tmp/
+
+# 运行期数据（数据集、SQLite、导出文件）；镜像内只保留空目录，由命名卷填充
+backend/data/
+
+# --- node 本地依赖与构建产物 ---
+**/node_modules/
+frontend/dist/
+frontend/.tmp/
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
+**/*.tsbuildinfo

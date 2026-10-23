@@ -1,0 +1,99 @@
+# MetricMind Docker Compose：一条命令起完整应用。
+#
+#   docker compose up -d --build     → http://localhost:8080
+#   docker compose logs -f           → 跟随日志
+#   docker compose down              → 停止（保留数据卷）
+#   docker compose down -v           → 停止并清空数据集/报告
+#
+# 网络拓扑：浏览器只访问 web（Nginx）。Nginx 托管 React 构建产物，并把 /api/
+# 反向代理到 api 容器；api 容器不暴露给外网，仅在 127.0.0.1 上开一个端口方便
+# 调 /docs 与 curl。
+#
+# 配置：自动读取仓库根 .env（若存在），所以 Demo 模式开箱即用，填了
+# OPENAI_API_KEY 就切换成 Live 模式。.env 不会被打进镜像（见 .dockerignore）。
+
+name: metricmind
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: metricmind-api:1.0.0
+    container_name: metricmind-api
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 缺失 .env 也允许启动（Demo 模式），required: false 需要 Compose >= 2.24。
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # 浏览器与 Nginx 同源，CORS 只用于本机直连 api 端口调试时。
+      CORS_ORIGINS: http://127.0.0.1:${WEB_PORT:-8080},http://localhost:${WEB_PORT:-8080}
+      # 必须是仓库根相对路径：容器内 ROOT_DIR=/app，与本地目录结构保持一致。
+      DATA_DIR: backend/data
+      DB_PATH: backend/data/metricmind.db
+
+    volumes:
+      # 上传的数据集、SQLite 元数据、导出的报告都落在这里，重建镜像不丢。
+      - metricmind_data:/app/backend/data
+
+    ports:
+      # 只绑回环地址：/docs 与直连调试够用，又不把无限流的 API 暴露到局域网。
+      # 默认 18000 而不是 8000，避免和 `scripts/dev.cmd` 起的本地后端抢端口。
+      - "127.0.0.1:${API_PORT:-18000}:8000"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE: /api
+    image: metricmind-web:1.0.0
+    container_name: metricmind-web
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    ports:
+      # 默认只绑回环：应用没有登录鉴权，不该默认对局域网开放。
+      # 需要手机/别的机器访问时设 WEB_BIND=0.0.0.0（见 docs/DOCKER.md 第 8 节）。
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  metricmind_data:
+    name: metricmind_data

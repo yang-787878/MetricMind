@@ -1,0 +1,138 @@
+{
+  "generated_at": "2026-10-22T12:01:18+00:00",
+  "source": "data/sample_sales.csv",
+  "sales": {
+    "total_revenue": {
+      "value": 19702878.99,
+      "unit": "CNY",
+      "method": "SUM(revenue) 全量"
+    },
+    "sep_revenue": {
+      "value": 1838980.47,
+      "unit": "CNY",
+      "method": "SUM(revenue) WHERE month='2025-09'"
+    },
+    "sep_mom_change": {
+      "value": -0.1894,
+      "unit": "ratio",
+      "method": "(2025-09 - 2025-08) / 2025-08"
+    },
+    "sep_vs_jun_aug_change": {
+      "value": -0.1824,
+      "unit": "ratio",
+      "method": "(2025-09 - mean(2025-06,2025-07,2025-08)) / 该均值"
+    },
+    "dtc_orders_sep_change": {
+      "value": -0.2493,
+      "unit": "ratio",
+      "method": "DTC 订单行数 9 月 vs 6–8 月均值"
+    },
+    "dtc_revenue_sep_change": {
+      "value": -0.2809,
+      "unit": "ratio",
+      "method": "DTC 销售额 9 月 vs 6–8 月均值"
+    },
+    "dtc_decline_contribution": {
+      "value": 0.6969,
+      "unit": "ratio",
+      "method": "DTC 降幅 / 总降幅（均为 6–8 月均值 - 9 月）"
+    },
+    "home_revenue_change": {
+      "value": -0.2918,
+      "unit": "ratio",
+      "method": "Home 销售额 9 月 vs 6–8 月均值"
+    },
+    "home_gross_profit_change": {
+      "value": -0.6048,
+      "unit": "ratio",
+      "method": "Home 毛利 9 月 vs 6–8 月均值"
+    },
+    "home_gross_margin_sep": {
+      "value": 0.1631,
+      "unit": "ratio",
+      "method": "Home 9 月毛利率 = 毛利/收入"
+    },
+    "home_gross_margin_change": {
+      "value": -0.1292,
+      "unit": "ratio",
+      "method": "Home 毛利率 9 月 - 6–8 月均值（百分点差，以比率计）"
+    },
+    "outlet_return_rate_sep": {
+      "value": 0.0714,
+      "unit": "ratio",
+      "method": "Outlet 9 月 returns_flag 均值"
+    },
+    "outlet_return_rate_base": {
+      "value": 0.0309,
+      "unit": "ratio",
+      "method": "Outlet 6–8 月 returns_flag 均值"
+    },
+    "top3_category_share": {
+      "value": 0.9392,
+      "unit": "ratio",
+      "method": "收入前 3 品类 revenue 合计 / 全部品类 revenue"
+    },
+    "aov_by_channel": {
+      "unit": "CNY",
+      "method": "SUM(revenue) / 订单行数，按 channel",
+      "values": {
+        "DTC": 2766.494,
+        "Outlet": 2745.7914,
+        "Wholesale": 2715.0235
+      }
+    },
+    "null_region_rows": {
+      "value": 120.0,
+      "unit": "count",
+      "method": "region IS NULL 行数"
+    },
+    "duplicate_order_ids": {
+      "value": 15.0,
+      "unit": "count",
+      "method": "order_id 重复出现次数"
+    },
+    "row_count": {
+      "value": 7180.0,
+      "unit": "count",
+      "method": "全量行数"
+    }
+  },
+  "funnel": {
+    "conversion_by_channel": {
+      "unit": "ratio",
+      "method": "SUM(orders) / SUM(sessions)，按 channel",
+      "values": {
+        "Affiliate": 0.0241,
+        "Direct": 0.0596,
+        "Email": 0.0543,
+        "Paid Search": 0.03,
+        "Social": 0.016
+      }
+    },
+    "row_count": {
+      "value": 260.0,
+      "unit": "count",
+      "method": "全量行数"
+    },
+    "total_revenue": {
+      "value": 25122122.26,
+      "unit": "CNY",
+      "method": "SUM(revenue) 全量"
+    },
+    "total_orders": {
+      "value": 174941.0,
+      "unit": "count",
+      "method": "SUM(orders) 全量"
+    },
+    "total_sessions": {
+      "value": 4749532.0,
+      "unit": "count",
+      "method": "SUM(sessions) 全量"
+    },
+    "overall_conversion": {
+      "value": 0.0368,
+      "unit": "ratio",
+      "method": "SUM(orders) / SUM(sessions) 全量"
+    }
+  }
+}

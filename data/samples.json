@@ -1,0 +1,28 @@
+{
+  "samples": [
+    {
+      "key": "sales",
+      "name": "销售订单示例数据",
+      "description": "7180 行、14 列的销售订单明细，主时间范围 2025-01-01 至 2025-09-30（另含 8 行 2024-11 的异常日期，用于数据质量检验），覆盖渠道、品类、地区与客户分层，可直接用于下降归因分析。",
+      "filename": "sample_sales.csv",
+      "row_count": 7180,
+      "recommended_questions": [
+        "为什么 2025 年 9 月销售额相比 6–8 月下降了？",
+        "各渠道的订单量和客单价有什么差异？",
+        "哪些品类贡献了大部分收入，9 月毛利率发生了什么变化？"
+      ]
+    },
+    {
+      "key": "marketing_funnel",
+      "name": "营销漏斗示例数据",
+      "description": "260 行、5 个渠道的周度营销漏斗数据，覆盖 2025-W01 至 2025-W52，包含 sessions、orders、spend 与 revenue，可用于渠道转化率与投入产出比较。",
+      "filename": "sample_marketing_funnel.csv",
+      "row_count": 260,
+      "recommended_questions": [
+        "不同渠道的转化率（orders/sessions）有什么区别？",
+        "各渠道带来的订单量和收入贡献如何？",
+        "转化率在 2025 年各周是否有明显的季节性变化？"
+      ]
+    }
+  ]
+}

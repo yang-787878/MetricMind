@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: rgb(var(--bg-rgb));
+    color: rgb(var(--text-rgb));
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 20px;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 数字一律等宽对齐，避免表格/卡片里的数值跳动 */
+  .tabular,
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgb(var(--surface-rgb)),
+      0 0 0 4px rgb(var(--brand-500-rgb) / 0.4);
+    border-radius: var(--r-sm);
+  }
+
+  ::selection {
+    background: rgb(var(--brand-100-rgb));
+    color: rgb(var(--brand-700-rgb));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+  @media print {
+    .no-print,
+    header.sticky,
+    aside,
+    button {
+      display: none !important;
+    }
+
+    body {
+      background: #ffffff;
+    }
+
+    main,
+    .page {
+      padding: 0 !important;
+      max-width: none !important;
+    }
+
+    .card {
+      box-shadow: none !important;
+      break-inside: avoid;
+    }
+
+    h1,
+    h2,
+    h3 {
+      break-after: avoid;
+    }
+
+    svg {
+      filter: grayscale(1);
+    }
+  }
+}
+
+@layer components {
+  /* 卡片基线：所有内容卡只用这一种描边/圆角/阴影组合 */
+  .card {
+    @apply rounded-lg border border-border bg-surface shadow-xs;
+  }
+
+  .card-flat {
+    @apply rounded-lg border border-border bg-surface;
+  }
+
+  /* 键盘焦点环的可复用写法（组件里用 focus-ring 类） */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-1;
+  }
+}

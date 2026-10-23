@@ -1,0 +1,51 @@
+# --- node ---
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+# pnpm 11 默认把内容寻址仓库放在项目根；只作构建缓存，不入库
+.pnpm-store/
+
+# --- python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# --- runtime data ---
+backend/data/
+*.db
+*.db-wal
+*.db-shm
+
+# --- secrets ---
+.env
+.env.local
+.env.*.local
+# 备份文件与一切 .env.* 变体（保留可入库的模板）
+.env.*
+!.env.example
+
+# --- local dev helper ---
+.dev-logs/
+.dev-pids.json
+
+# --- tests / tooling ---
+playwright-report/
+test-results/
+coverage/
+.tmp/
+backend/tests/_work/
+pytest-cache-files-*/
+
+# --- local agent memory ---
+.workbuddy/
+
+# --- os / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

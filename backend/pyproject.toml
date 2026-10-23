@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metricmind-backend"
+version = "1.0.0"
+description = "MetricMind - controlled tool-using data analysis agent backend"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "uvicorn[standard]>=0.30,<1.0",
+  "python-multipart>=0.0.9",
+  "pydantic>=2.9,<3",
+  "pydantic-settings>=2.4,<3",
+  "pandas>=2.2,<3.2",
+  "numpy>=1.26,<3",
+  "duckdb>=1.1,<2",
+  "sqlglot>=25,<30",
+  "openpyxl>=3.1,<4",
+  "langgraph>=0.2,<2",
+  "openai>=1.40,<3",
+  "jinja2>=3.1,<4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "httpx>=0.27,<1"]
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# 受限文件系统下 .pytest_cache 的原子写会失败；断言与结果不依赖该缓存
+addopts = "-p no:cacheprovider"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

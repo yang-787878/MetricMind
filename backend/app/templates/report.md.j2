@@ -1,0 +1,88 @@
+# {{ report.title }}
+
+- **模式**：{{ 'live' if report.mode == 'live' else 'demo' }}
+- **生成时间**：{{ generated_at }}
+- **状态**：{{ report.status }}
+{% if coverage is not none %}- **数字审计覆盖率**：{{ coverage }}{% endif %}
+{% if dataset_name %}- **数据集**：{{ dataset_name }}{% endif %}
+
+> {{ report.headline }}
+
+{% if report.kpis %}
+## KPI
+
+| 指标 | 数值 | 单位 |
+|---|---|---|
+{% for kpi in report.kpis %}| {{ kpi.label }} | {{ kpi.display_value or kpi.value }} | {{ {'CNY': '人民币', 'ratio': '比率', 'count': '条数'}.get(kpi.unit, kpi.unit or '—') }} |
+{% endfor %}
+{% endif %}
+{% if charts %}
+## 图表
+
+> Markdown 无法渲染图形，图表以下面的数据表形式呈现；对应 HTML 报告含内联 SVG。
+
+{% for chart in charts %}
+### {{ chart.spec.title }}
+
+{% if chart.spec.subtitle %}{{ chart.spec.subtitle }}
+{% endif %}
+来源：`{{ chart.spec.source.result_id }}` · 工具 `{{ chart.spec.source.tool }}` · {{ chart.spec.source.row_count }} 行
+
+| {{ chart.spec.x.label }} | {% if chart.spec.series %}{{ chart.spec.series.label }} | {% endif %}{{ chart.spec.y.label }} |
+|---|---|---|
+{% for row in chart.spec.data %}| {{ row.get(chart.spec.x.key) }} | {% if chart.spec.series %}{{ row.get(chart.spec.series.key) }} | {% endif %}{{ row.get(chart.spec.y.key) | num }} |
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% if report.sections %}
+## 结论
+
+{% for section in report.sections %}
+### {{ loop.index }}. {{ section.heading }}{% if section.degraded %}（证据不足，已降级）{% endif %}
+
+{{ section.body }}
+
+{% if section.evidence_ids %}证据：{% for evidence_id in section.evidence_ids %}`{{ evidence_id }}`{% if not loop.last %}、{% endif %}{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if report.claims %}
+## 数字核验
+
+| 结论 | 声明值 | 证据 | 状态 |
+|---|---|---|---|
+{% for claim in report.claims %}| {{ claim.text }} | {% if claim.display_numbers %}{{ claim.display_numbers | join('，') }}{% else %}{% for number in claim.numbers %}{{ number.value }}{{ number.unit }}{% if not loop.last %}，{% endif %}{% endfor %}{% endif %} | {{ claim.evidence_ids | join(', ') or '—' }} | {{ claim.status }} |
+{% endfor %}
+{% endif %}
+{% if report.methodology %}
+## 方法论与口径
+
+| 步骤 | 说明 | 工具 | 口径 / SQL |
+|---|---|---|---|
+{% for item in report.methodology %}| {{ item.step_id }} | {{ item.description }} | {{ item.tool }} | {{ item.formula or item.sql or '—' }} |
+{% endfor %}
+{% endif %}
+{% if report.data_quality %}
+## 数据质量
+
+| 代码 | 严重度 | 说明 |
+|---|---|---|
+{% for note in report.data_quality %}| {{ note.code }} | {{ note.severity }} | {{ note.message }} |
+{% endfor %}
+{% endif %}
+{% if report.limitations %}
+## 局限性
+
+{% for item in report.limitations %}- {{ item }}
+{% endfor %}
+{% endif %}
+{% if report.next_steps %}
+## 后续建议
+
+{% for item in report.next_steps %}- {{ item }}
+{% endfor %}
+{% endif %}
+
+---
+
+由 MetricMind 生成 · 模式 {{ report.mode }} · 所有数值来自工具执行结果，可回溯至 result_id
