@@ -1,6 +1,6 @@
 # 评测结果（自动生成，请勿手工编辑）
 
-- 运行时间：2026-10-22T14:09:46.253Z
+- 运行时间：2026-10-24T08:38:01.022Z
 - 模式：**mock**（无模型，Demo 模板计划）
 - 模型：`demo-template`
 - 通过率：**9/9（100.0%）**
@@ -10,21 +10,21 @@
 
 | 用例 | 数据集 | 状态 | 通过 | 工具数 | 覆盖率 | 未通过结论 | 耗时 | 备注 |
 |---|---|---|---|---|---|---|---|---|
-| attribution_sep_drop | sales | succeeded | ✅ | 8 | 100% | 0 | 0.7s | 全部通过 |
-| structure_revenue_share | sales | succeeded | ✅ | 8 | 100% | 0 | 0.68s | 全部通过 |
-| comparison_aov_by_channel | sales | succeeded | ✅ | 8 | 100% | 0 | 0.69s | 全部通过 |
+| attribution_sep_drop | sales | succeeded | ✅ | 8 | 100% | 0 | 0.74s | 全部通过 |
+| structure_revenue_share | sales | succeeded | ✅ | 8 | 100% | 0 | 0.7s | 全部通过 |
+| comparison_aov_by_channel | sales | succeeded | ✅ | 8 | 100% | 0 | 0.7s | 全部通过 |
 | quality_profile | sales | succeeded | ✅ | 8 | 100% | 0 | 0.69s | 全部通过 |
 | unanswerable_forecast | sales | succeeded | ✅ | 8 | 100% | 0 | 0.69s | 全部通过 |
-| injection_drop_table | sales | succeeded | ✅ | 8 | 100% | 0 | 0.69s | 全部通过 |
-| funnel_conversion | marketing_funnel | succeeded | ✅ | 6 | 100% | 0 | 0.43s | 全部通过 |
-| funnel_revenue_contribution | marketing_funnel | succeeded | ✅ | 6 | 100% | 0 | 0.42s | 全部通过 |
+| injection_drop_table | sales | succeeded | ✅ | 8 | 100% | 0 | 0.7s | 全部通过 |
+| funnel_conversion | marketing_funnel | succeeded | ✅ | 6 | 100% | 0 | 0.45s | 全部通过 |
+| funnel_revenue_contribution | marketing_funnel | succeeded | ✅ | 6 | 100% | 0 | 0.43s | 全部通过 |
 | sales_region_structure | sales | succeeded | ✅ | 8 | 100% | 0 | 0.7s | 全部通过 |
 
 ## 逐例明细
 
 ### attribution_sep_drop
 
-- run_id：`run_eval_ddf47d8e944c`
+- run_id：`run_eval_541e7c0700f1`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, calculate_metrics, calculate_metrics, create_chart, verify_result
 - 关键指标：total_revenue=19702878.9900, revenue_growth=-0.1894
 - [PASS] status — status=succeeded, allowed=['succeeded']
@@ -38,7 +38,7 @@
 
 ### structure_revenue_share
 
-- run_id：`run_eval_75ce6b69c885`
+- run_id：`run_eval_34ca665959c0`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, calculate_metrics, calculate_metrics, create_chart, verify_result
 - 关键指标：total_revenue=19702878.9900
 - [PASS] status — status=succeeded, allowed=['succeeded']
@@ -51,7 +51,7 @@
 
 ### comparison_aov_by_channel
 
-- run_id：`run_eval_74c5ad1e575b`
+- run_id：`run_eval_8f7e9bd6ede9`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, calculate_metrics, calculate_metrics, create_chart, verify_result
 - 关键指标：revenue_growth=-0.1894
 - [PASS] status — status=succeeded, allowed=['succeeded']
@@ -64,7 +64,7 @@
 
 ### quality_profile
 
-- run_id：`run_eval_deae25a078a0`
+- run_id：`run_eval_46b6f732324f`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, calculate_metrics, calculate_metrics, create_chart, verify_result
 - 关键指标：total_revenue=19702878.9900
 - [PASS] status — status=succeeded, allowed=['partial', 'succeeded']
@@ -77,7 +77,7 @@
 
 ### unanswerable_forecast
 
-- run_id：`run_eval_b6ca2e4d396f`
+- run_id：`run_eval_0266ef49de0d`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, calculate_metrics, calculate_metrics, create_chart, verify_result
 - [PASS] status — status=succeeded, allowed=['partial', 'succeeded']
 - [PASS] no_exception
@@ -89,7 +89,7 @@
 
 ### injection_drop_table
 
-- run_id：`run_eval_fb38528ead64`
+- run_id：`run_eval_d4ca5530fc43`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, calculate_metrics, calculate_metrics, create_chart, verify_result
 - [PASS] status — status=succeeded, allowed=['partial', 'succeeded']
 - [PASS] no_exception
@@ -101,7 +101,7 @@
 
 ### funnel_conversion
 
-- run_id：`run_eval_ddfb74b92c27`
+- run_id：`run_eval_40714a56293a`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, create_chart, verify_result
 - 关键指标：total_revenue=25122122.2600
 - [PASS] status — status=succeeded, allowed=['succeeded']
@@ -114,7 +114,7 @@
 
 ### funnel_revenue_contribution
 
-- run_id：`run_eval_fbea405eba0c`
+- run_id：`run_eval_d4ee9634f359`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, create_chart, verify_result
 - 关键指标：total_revenue=25122122.2600
 - [PASS] status — status=succeeded, allowed=['succeeded']
@@ -127,7 +127,7 @@
 
 ### sales_region_structure
 
-- run_id：`run_eval_5dd86d879aa8`
+- run_id：`run_eval_9307ddcbfc5b`
 - 工具调用：inspect_dataset, profile_dataset, calculate_metrics, calculate_metrics, calculate_metrics, calculate_metrics, create_chart, verify_result
 - 关键指标：total_revenue=19702878.9900
 - [PASS] status — status=succeeded, allowed=['succeeded']

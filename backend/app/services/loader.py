@@ -29,6 +29,7 @@ logger = get_logger(__name__)
 
 ALLOWED_EXTENSIONS = frozenset({".csv", ".xlsx"})
 DATE_HINTS = ("date", "time", "day", "month", "week", "年", "月", "日", "时间")
+MONTH_LABEL_PATTERN = r"^\d{4}-(?:0[1-9]|1[0-2])$"
 MONEY_HINTS = ("price", "revenue", "cost", "amount", "spend", "profit", "金额", "价格", "成本")
 ID_PATTERN = re.compile(r"(?:^|_)id$|(?:^|_)id_|(?:^|_)code$|编号|uuid", re.IGNORECASE)
 OUTLIER_METHOD = "IQR 1.5"
@@ -108,6 +109,20 @@ def _looks_temporal(name: str, series: pd.Series) -> bool:
     return float(parsed.notna().mean()) >= 0.9
 
 
+def _is_month_label(series: pd.Series) -> bool:
+    """`2018-07` 是月份标签，不是时间点。
+
+    若强行转成 Timestamp，DuckDB 视图里会变成 TIMESTAMP，`order_month = '2018-07'`
+    这种最自然的写法会因为无法把 "2018-07" cast 成 TIMESTAMP 而直接报错。
+    保持文本既符合列语义，也让 SQL 按字符串等值/IN 分组可用。
+    """
+    non_null = series.dropna()
+    if non_null.empty or pd.api.types.is_datetime64_any_dtype(non_null):
+        return False
+    sample = non_null.astype(str).head(200)
+    return bool(sample.str.match(MONTH_LABEL_PATTERN).mean() >= 0.95)
+
+
 def infer_semantic_type(name: str, series: pd.Series) -> SemanticType:
     """§8.7 规则：identifier → temporal → categorical → numeric/text。
 
@@ -149,7 +164,11 @@ def infer_semantic_type(name: str, series: pd.Series) -> SemanticType:
 
 
 def coerce_frame(df: pd.DataFrame, schema: list[dict[str, Any]]) -> pd.DataFrame:
-    """按语义类型把字符串列转成数值/时间，保证 pandas 计算与 DuckDB 视图类型一致。"""
+    """按语义类型把字符串列转成数值/时间，保证 pandas 计算与 DuckDB 视图类型一致。
+
+    例外：`YYYY-MM` 月份标签保持文本——它没有“日”信息，转成 Timestamp 后
+    DuckDB 不接受 `order_month = '2018-07'` 这种自然比较。
+    """
     frame = df.copy()
     for column in schema:
         name = column.get("name")
@@ -159,7 +178,8 @@ def coerce_frame(df: pd.DataFrame, schema: list[dict[str, Any]]) -> pd.DataFrame
         if semantic == SemanticType.NUMERIC.value:
             frame[name] = pd.to_numeric(frame[name], errors="coerce")
         elif semantic == SemanticType.TEMPORAL.value:
-            frame[name] = pd.to_datetime(frame[name], errors="coerce", format="mixed")
+            if not _is_month_label(frame[name]):
+                frame[name] = pd.to_datetime(frame[name], errors="coerce", format="mixed")
         elif semantic == SemanticType.BOOLEAN.value:
             frame[name] = frame[name].astype("boolean")
     return frame
@@ -319,7 +339,7 @@ def profile_frame(
                     }
                 )
 
-        if any(hint in name.lower() for hint in DATE_HINTS):
+        if _is_textual(series) and any(hint in name.lower() for hint in DATE_HINTS):
             sample = non_null.astype(str).head(200)
             if not sample.empty:
                 parsed = pd.to_datetime(sample, errors="coerce", format="mixed")

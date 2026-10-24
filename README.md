@@ -102,7 +102,11 @@ pnpm dev
 ```bash
 python scripts/generate_sample_data.py     # 固定 seed，两次运行 sha256 一致
 python scripts/compute_expected.py         # 纯 pandas 金标准 → data/expected_answers.json
+python scripts/build_olist_sample.py       # Olist 公开数据 → data/sample_olist_orders.csv
 ```
+
+> Olist 原始 CSV 放在 `data/olist_raw/`（约 50MB，不入库）；产物为 **112,650 行 / 15 列 / 14.5MB**，
+> 是真实公开数据（Olist Brazilian E-Commerce，CC BY-NC-SA 4.0），不含任何用户隐私字段。
 
 ### 配置（`.env`）
 
@@ -136,12 +140,12 @@ cp .env.example .env
 
 ## 3. 5 分钟演示路径
 
-1. **首页** → 点「销售订单示例数据」（7,180 行 / 14 列，载入幂等）。
-2. 输入 **“为什么 2025 年 9 月销售额相比 6–8 月下降了？”** → 开始分析。
+1. **首页** → 点「Olist 电商订单（真实公开数据）」（112,650 行 / 15 列，载入幂等）。
+2. 输入 **“为什么 2018 年 8 月销售额相比 7 月下降了？”** → 开始分析。
 3. **工作区**：先看到计划（5 步，含工具与验证方式），步骤逐个变成「完成」，右栏执行流实时推事件。
 4. 展开任意步骤 → 工具卡「参数 / 结果」两个 Tab；点 `result_id` 可复制，粘贴到 `GET /api/tools`…
    实际上用 `GET /api/runs/{id}` 能查到同一结果集。
-5. 看 KPI（`¥1970.3 万`、`-18.9%`）、月度趋势图（「查看数据」抽屉里是同一份表格）。
+5. 看 KPI（当月销售额、环比降幅）、月度趋势图（「查看数据」抽屉里是同一份表格）。
 6. **报告**：结论 + 证据编号、数字核验（声称值 → 证据值）、方法论口径、数据质量、局限性。
 7. **导出 HTML** → 下载后断网打开，样式与图表完整（内联 SVG）。
 
@@ -237,7 +241,7 @@ stateDiagram-v2
 
 ```bash
 cd backend
-python -m pytest -q                     # 127 passed in 24.97s
+python -m pytest -q                     # 141 passed in 27.75s
 python -m evals.run --mode mock         # 9/9 (100.0%)；评测使用独立数据目录 backend/data/evals
 
 cd frontend
@@ -249,14 +253,15 @@ pnpm e2e                                # 3 passed（含真实 HTML 下载、非
 
 | 套件 | 结果 | 覆盖重点 |
 |---|---|---|
-| 后端 pytest | **127 passed**（24.97s） | SQL 守卫 39、工具 17、指标 16、loader 13、API 12、导出 7、验证器 9、事件 5、重规划 3、取消 2、确定性 2、评测 1 |
+| 后端 pytest | **141 passed** | SQL 守卫 39、工具、指标、loader、API、导出、验证器、事件、重规划、取消、确定性 |
 | 评测（mock） | **9/9（100%）** | 归因 / 结构 / 对比 / 质量 / 不可答 / 越权 / 漏斗转化 / 漏斗收入 / 地区结构 |
 | 前端 vitest | **31 passed**（2.20s） | 五状态时间线、工具卡错误态、KPI 格式化、上传校验、partial 横幅、SSE 去重与降级 |
 | E2E（Chromium） | **3 passed**（9.0s） | 主线（计划/工具/图表/报告/导出下载）+ 非法上传 + Live 未配置提示 |
 
 `backend/evals/last_run.md` 是评测运行产物（含逐例工具链、覆盖率、未通过项）。
-**mock 与 live 的区别**：mock 衡量确定性分析链（工具数值、证据完整性）；模型理解力需要 `--mode live`
-（本仓库未包含 live 实测数字，因为交付环境没有 API Key，见第 11 节）。
+**mock 与 live 的区别**：mock 衡量确定性分析链（工具数值、证据完整性）；模型理解力需要 `--mode live`。
+2026-10-24 在 112,650 行 Olist 数据上跑过一次 live 端到端：12 次工具调用、68s、
+证据覆盖率 100%、0 条未支持结论（见 `scripts/run_olist_live.py`）。
 
 ---
 
@@ -303,8 +308,9 @@ MetricMind/
 - **Demo 模式的叙述是模板**：与问题措辞无关（计划由字段结构决定），所以 Demo 更适合演示“流程与数字可信”，
   而不是“模型理解力”。这一点在评测报告里也标注了。
 - **未接入的知识**：不解析 PDF/Word、不做 OCR/网页抓取、不连实时数据库。
-- **Live 模式未在本环境实测**：交付环境没有 `OPENAI_API_KEY`，`LLM_UNAVAILABLE` 重试与降级路径是代码级实现。
-- **评测规模小**：9 条用例，只能证明典型路径正确，不能证明泛化能力。
+- **Live 只跑了单例**：在 112,650 行 Olist 数据上跑通一次 live 端到端（68s、12 次工具调用、覆盖率 100%），
+  但没有做 live 批量评测，模型理解力的稳定性还没有数字。
+- **评测规模小**：9 条金标准场景，只能证明典型路径正确，不能证明泛化能力。
 - **前端 E2E 3 条**：主线 + 非法上传 + Live 未配置；取消与断网降级仍只由单测覆盖。
 - **开发环境注意**：在受限 Windows 沙箱里 `python -m venv` 可能缺少 pip（`ensurepip` 失败），
   可改用 `python -m venv --without-pip` + 基础解释器的 `pip --python <venv>\Scripts\python.exe install -r requirements.txt`。
@@ -331,6 +337,9 @@ MetricMind/
 
 本项目为个人工程作品，代码可自由参考学习。依赖与设计参考：
 FastAPI、Pydantic、DuckDB、sqlglot、LangGraph、Recharts、Tailwind CSS、Radix 设计语言、shadcn/ui 的组件写法。
-示例数据由本项目脚本生成，不含任何真实业务数据。
+
+示例数据：`sales` 与 `marketing_funnel` 由本项目脚本生成，不含任何真实业务数据；
+`olist_orders` 来自公开数据集 [Olist Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+（CC BY-NC-SA 4.0），原始表已剔除订单评论与地理位置等含个人信息的部分。
 
 

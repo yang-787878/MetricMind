@@ -9,7 +9,7 @@ from ...logging_conf import get_logger
 from .. import demo_planner
 from ..run_context import RunContext
 from ..state import AgentState
-from ._steps import step_records_from_plan
+from ._steps import step_records_from_plan, with_dataset_id
 from .plan import llm_plan
 
 logger = get_logger(__name__)
@@ -88,6 +88,14 @@ async def replan(state: AgentState, ctx: RunContext) -> dict[str, Any]:
         },
     )
     ctx.usage.replans_used = replan_count + 1
+    # 与 plan() 一致：dataset_id 由服务端注入。漏掉这一步时模型写的 "$dataset_id"
+    # 会原样进入工具，被误判为跨数据集访问并触发不可恢复的 DATASET_NOT_FOUND。
+    for step in new_plan.get("steps") or []:
+        step["tool_args_hint"] = with_dataset_id(
+            str(step.get("tool") or ""),
+            dict(step.get("tool_args_hint") or {}),
+            state["dataset_id"],
+        )
     steps = step_records_from_plan(new_plan)
     logger.info(
         "run_replanned",

@@ -135,6 +135,24 @@ async def test_replan_recovers_from_invalid_column(harness) -> None:
     assert harness.run_row()["status"] == "succeeded"
 
 
+async def test_replan_injects_dataset_id_placeholder(harness) -> None:
+    """回归：重规划返回 "$dataset_id" 时，服务端必须注入真实 id，而不是送进工具。"""
+    dataset_id = harness.dataset_id
+    llm = FakeLLM(
+        responses=[
+            json.dumps(_plan_with_bad_column(dataset_id)),
+            json.dumps({"step_id": "s1", "tool": None, "reason": "列不存在，无法修复"}),
+            json.dumps(_plan_valid("$dataset_id")),
+            _reporter(harness.store, harness.run_id),
+        ]
+    )
+    final = await harness.run(mode="live", llm=llm)
+
+    assert final["status"] == "succeeded"
+    plan = json.loads(harness.run_row()["plan_json"])
+    assert plan["steps"][0]["tool_args_hint"]["dataset_id"] == dataset_id
+
+
 async def test_unrecoverable_dataset_error_marks_failed(harness) -> None:
     """不可恢复错误（引用别的数据集）→ execute 判定 fail → fail → finalize(failed)。
 

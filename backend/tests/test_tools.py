@@ -95,6 +95,46 @@ async def test_query_data_success_and_truncation(ctx) -> None:
     assert "截断" in " ".join(envelope.meta.warnings)
 
 
+async def test_query_data_month_label_compares_as_text(
+    loader, store, engine, settings
+) -> None:
+    """回归：order_month 为 YYYY-MM 时必须保持文本，SQL 才能按 '2018-07' 等值过滤。"""
+    from app.agent.context import ToolContext
+    from app.services.evidence import EvidencePool
+
+    payload = (
+        "order_id,order_month,item_total\n"
+        "o1,2018-07,100\n"
+        "o2,2018-07,50\n"
+        "o3,2018-08,80\n"
+    ).encode("utf-8")
+    row = loader.create_from_upload("month_sales.csv", payload)
+    ctx = ToolContext(
+        run_id="run_month",
+        dataset_id=row["dataset_id"],
+        store=store,
+        loader=loader,
+        engine=engine,
+        evidence=EvidencePool(store, "run_month"),
+        settings=settings,
+    )
+    envelope = await execute_tool(
+        ctx,
+        "query_data",
+        {
+            "dataset_id": row["dataset_id"],
+            "sql": (
+                "SELECT order_month, SUM(item_total) AS gmv FROM data "
+                "WHERE order_month IN ('2018-07', '2018-08') "
+                "GROUP BY order_month ORDER BY order_month"
+            ),
+        },
+    )
+    assert envelope.ok, envelope.error
+    rows = {row_item[0]: float(row_item[1]) for row_item in envelope.data["rows"]}
+    assert rows == {"2018-07": 150.0, "2018-08": 80.0}
+
+
 async def test_query_data_empty_result(ctx) -> None:
     envelope = await execute_tool(
         ctx,

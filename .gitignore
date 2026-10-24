@@ -1,4 +1,4 @@
-# --- node ---
+﻿# --- node ---
 node_modules/
 dist/
 dist-ssr/
@@ -49,3 +49,7 @@ pytest-cache-files-*/
 Thumbs.db
 .idea/
 .vscode/
+
+# --- 公开数据集原始表（约 50MB，可由 scripts/build_olist_sample.py 重建） ---
+data/olist_raw/
+

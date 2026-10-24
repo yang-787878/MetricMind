@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 PLACEHOLDER_STEP = "$step:"
+PLACEHOLDER_DATASET = "$dataset_id"
 DATASET_TOOLS = frozenset({"inspect_dataset", "profile_dataset", "query_data", "calculate_metrics"})
 
 
@@ -53,16 +54,20 @@ def step_result_id(state: dict[str, Any], step_id: str) -> str | None:
 def resolve_placeholders(
     args: Any, state: dict[str, Any], last_result_id: str | None
 ) -> Any:
-    """把 `$step:s2` / `$last_result` 替换成真实 result_id。
+    """把 `$dataset_id` / `$step:s2` / `$last_result` 替换成真实值。
 
     计划在生成时不可能知道未来 result_id（它由执行决定），所以用占位符表达依赖，
     由执行节点在真实结果产生后解析——这样"图表只能引用真实结果"依然成立。
+    `$dataset_id` 是计划提示词规定的系统占位符，必须在这里兜底解析：任何漏掉
+    `with_dataset_id()` 注入的路径（例如 replan）都不能把字面量送进工具。
     """
     if isinstance(args, dict):
         return {key: resolve_placeholders(value, state, last_result_id) for key, value in args.items()}
     if isinstance(args, list):
         return [resolve_placeholders(item, state, last_result_id) for item in args]
     if isinstance(args, str):
+        if args == PLACEHOLDER_DATASET:
+            return state.get("dataset_id") or args
         if args.startswith(PLACEHOLDER_STEP):
             return step_result_id(state, args[len(PLACEHOLDER_STEP):]) or args
         if args == "$last_result":

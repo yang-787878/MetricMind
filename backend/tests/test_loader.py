@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 
 import pandas as pd
 import pytest
@@ -174,3 +175,39 @@ def test_quality_issues_reported(loader) -> None:
     assert "DUPLICATE_ROWS" in codes
     assert "ZERO_OR_NEGATIVE" in codes
     assert detail["quality"]["duplicate_row_count"] >= 1
+
+
+def test_month_labels_stay_text(loader) -> None:
+    """`2018-07` 是月份标签：保留文本，DuckDB 才接受 order_month = '2018-07'。"""
+    payload = _csv(
+        [
+            {"order_id": "o1", "order_month": "2018-07", "item_total": 100},
+            {"order_id": "o2", "order_month": "2018-08", "item_total": 80},
+            {"order_id": "o3", "order_month": "2018-07", "item_total": 50},
+        ]
+    )
+    row = loader.create_from_upload("months.csv", payload)
+    detail = loader.dataset_detail(row)
+    kinds = {column["name"]: column["semantic_type"] for column in detail["columns"]}
+    assert kinds["order_month"] == "temporal"
+
+    frame = loader.load_frame(row)
+    assert not pd.api.types.is_datetime64_any_dtype(frame["order_month"])
+    assert frame["order_month"].tolist() == ["2018-07", "2018-08", "2018-07"]
+
+
+def test_numeric_day_column_is_not_parsed_as_date(loader) -> None:
+    """delivery_days 这类数值列不该因为列名含 day 就被判 DATE_UNPARSEABLE。"""
+    payload = _csv(
+        [
+            {"order_id": "o1", "order_date": "2025-01-01", "delivery_days": 8.88},
+            {"order_id": "o2", "order_date": "2025-01-02", "delivery_days": 7.69},
+            {"order_id": "o3", "order_date": "2025-01-03", "delivery_days": 9.1},
+        ]
+    )
+    row = loader.create_from_upload("delivery.csv", payload)
+    issues = json.loads(row["quality_json"])["issues"]
+    assert not any(
+        issue["code"] == "DATE_UNPARSEABLE" and issue["column"] == "delivery_days"
+        for issue in issues
+    )
