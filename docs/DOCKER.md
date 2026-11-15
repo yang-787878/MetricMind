@@ -153,10 +153,45 @@ curl.exe -s http://localhost:8080/api/runs/<run_id>/report
 curl.exe -OJ "http://localhost:8080/api/runs/<run_id>/export?format=html"
 ```
 
+### 一次运行为什么失败：先看事件流，再看日志
+
+`docker compose logs api` 里只有 HTTP 请求行和 `run_created` / `run_finalized` 两个标记。
+工具调用失败、预算耗尽、重规划原因都只在**事件流**里（落 SQLite，也由 API 暴露）。
+一条命令打印完整失败链：
+
+```powershell
+.\scripts\run_diag.ps1                        # 最近运行列表（标出 failed / partial）
+.\scripts\run_diag.ps1 -RunId <run_id>        # 失败链：错误码、失败步骤、出错参数、事件时间线
+.\scripts\run_diag.ps1 -FailedOnly -Timeline  # 所有失败运行 + 完整时间线
+```
+
+> 若提示「未对文件进行数字签名」（执行策略限制），改用 `.cmd` 包装器，参数完全一样：
+> `.\scripts\run_diag.cmd -RunId <run_id>`。
+
+等价的裸接口：
+
+```powershell
+curl.exe -s http://localhost:8080/api/runs?limit=10
+curl.exe -s http://localhost:8080/api/runs/<run_id>
+curl.exe -s "http://localhost:8080/api/runs/<run_id>/events?after_seq=0&limit=500"
+```
+
+日志侧（PowerShell 里 `docker logs` 写 stderr，不接 `2>&1` 会被当成 NativeCommandError）：
+
+```powershell
+docker compose logs --tail 200 api
+docker compose logs --since 2026-11-12T15:00:00 api 2>&1 | Select-String 'run_id|ERROR|tool_call_failed'
+```
+
+> 容器日志按 `max-size 10m / max-file 3` 轮转，历史会被滚掉；事件流在 SQLite 里，
+> 只要不 `down -v` 就一直都在——排障以事件流为准，日志用来确认进程 / 启动层面的事。
+
 ## 7. 故障排查
 
 | 现象 | 原因 / 处理 |
 |---|---|
+| 界面报「分析失败」，但日志里没有 ERROR | 工具失败与终态错误只进事件流：`.\scripts\run_diag.ps1 -RunId <run_id>`，或看 `GET /api/runs/<run_id>` 的 `error` 与 `steps[].tool_calls[].error` |
+| 改了后端代码、行为却没变 | 镜像比代码旧：`docker image inspect metricmind-api:1.0.0 --format '{{.Created}}'` 对一下提交时间，需要重建 `docker compose up -d --build api` |
 | `bind: address already in use` | 8080 被占就 `$env:WEB_PORT=9090; docker compose up -d`；18000 被占则设 `API_PORT`。默认端口已避开本地 dev 的 8000/5173 |
 | web 容器一直 `unhealthy` | 看 `docker compose logs web`；确认构建时 `dist/` 有产物，Nginx 配置通过 `docker compose exec web nginx -t` |
 | 页面能开、接口 502 | api 还没健康或启动失败：`docker compose logs api`；常见是 `.env` 里路径/Key 写错导致启动自检失败 |

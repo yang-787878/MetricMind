@@ -37,8 +37,20 @@ async def finalize(state: AgentState, ctx: RunContext) -> dict[str, Any]:
     ):
         status = RunStatus.PARTIAL
         warnings.append("存在被跳过的步骤，报告标记为部分结果")
-    if state.get("error"):
+    raw_error: Any = state.get("error")
+    error: dict[str, Any] = raw_error if isinstance(raw_error, dict) else {}
+    if raw_error:
         status = RunStatus.FAILED
+        # 终态失败是一条 ERROR：只写 INFO 的话，`docker compose logs` 里看不出这次
+        # 运行为什么 failed，得回数据库翻 error_json。
+        logger.error(
+            "run_failed",
+            extra={
+                "run_id": ctx.run_id,
+                "code": str(error.get("code") or ""),
+                "detail": str(error.get("message") or raw_error)[:300],
+            },
+        )
 
     evidence: dict[str, Any] = {}
     for result_id in ctx.evidence.all_ids():

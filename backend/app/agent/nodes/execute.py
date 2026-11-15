@@ -5,9 +5,12 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from ...logging_conf import get_logger
 from ..run_context import BudgetExhausted, RunContext
 from ..state import AgentState
 from ._steps import now_iso, resolve_placeholders
+
+logger = get_logger(__name__)
 
 
 def _summarise(data: Any) -> str:
@@ -131,6 +134,18 @@ async def execute(state: AgentState, ctx: RunContext) -> dict[str, Any]:
             "hint": error.hint if error else None,
             "fields": list(error.fields or []) if error else [],
         }
+        # 工具失败原本只进事件流，docker logs 里一个字都看不到，事后只能翻数据库。
+        # 这里补一条 WARNING：日志带 run_id/step_id/tool/code，就能直接按 run 过滤定位。
+        logger.warning(
+            "tool_call_failed",
+            extra={
+                "run_id": ctx.run_id,
+                "step_id": step["step_id"],
+                "tool": str(step["tool"]),
+                "code": step["error"]["code"],
+                "detail": str(step["error"]["message"])[:300],
+            },
+        )
         failed_step = step["step_id"]
         next_index = index
 
