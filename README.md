@@ -158,7 +158,7 @@ cp .env.example .env
 flowchart LR
   B[浏览器 React 18 + Vite] -- REST /api --> F[FastAPI]
   B -. SSE /events/stream .-> F
-  F --> R[Runner<br/>Semaphore(2) · 取消 · 超时]
+  F --> R["Runner<br/>Semaphore(2) · 取消 · 超时"]
   R --> G[LangGraph StateGraph]
   G --> N[intake → inspect → plan → execute → verify → report → audit → finalize]
   N --> T[7 个受控工具]
