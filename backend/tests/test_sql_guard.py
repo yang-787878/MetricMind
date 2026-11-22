@@ -112,6 +112,19 @@ def test_blocks_unparseable_sql() -> None:
     _rejected("SELEC * FROM data")
 
 
+def test_reports_unbalanced_parenthesis_with_position() -> None:
+    error = _rejected("SELECT COUNT(*) FROM (SELECT * FROM data")
+    assert "不配平" in error.message
+    assert "右括号" in error.message
+    assert "SELECT COUNT" in str(error.details.get("hint") or "")
+
+
+def test_reports_unterminated_quote() -> None:
+    error = _rejected("SELECT * FROM data WHERE product_category = 'health beauty")
+    assert "不配平" in error.message
+    assert "引号" in error.message
+
+
 def test_rejects_glob_function() -> None:
     _rejected("SELECT * FROM glob('*')")
 

@@ -15,6 +15,8 @@
 1. 列名必须来自 `dataset.columns`，不得虚构；错误为 `INVALID_COLUMN` 时优先改用 `error.available` 中的列。
 2. 参数必须符合 `tool_schema`，不要新增未知字段。
 3. 错误为 `SQL_REJECTED` 时，改写成对视图 `data` 的单条只读 SELECT。
+   若原 SQL 超过 1000 字符或报"括号/引号不配平"，**整条重写为更短的等价查询**（保留必要的 CTE，
+   删掉重复子查询与嵌套 CASE），不要只在原串上补括号——局部打补丁通常还会再失败一次。
 4. 错误为 `EMPTY_RESULT` 时，放宽筛选条件或改用其它维度，不要编造数据。
 5. `create_chart` 的 `x / y / series` 必须来自 `result_columns` 中该 `from_result_id` 的 `columns`；
    若报 `INVALID_COLUMN` 或"没有分组数据"，优先把 `from_result_id` 换成带 `group_by` 的结果，

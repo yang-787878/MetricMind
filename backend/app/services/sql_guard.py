@@ -103,6 +103,53 @@ def _function_name(node: exp.Expression) -> str:
     return ""
 
 
+def _snippet(sql: str, position: int, radius: int = 60) -> str:
+    start = max(position - radius, 0)
+    end = min(position + radius, len(sql))
+    text = sql[start:end].replace("\n", " ")
+    return ("…" if start else "") + text + ("…" if end < len(sql) else "")
+
+
+def _balance_issue(sql: str) -> tuple[str, int] | None:
+    """先做括号/引号配平检查：模型写的超长 SQL 最常见的错就是少一个右括号。
+
+    返回 (问题描述, 出错位置)，位置用于在错误提示里给出上下文片段。
+    只有配平错误才算数——配平正确但仍有语法问题时交给 sqlglot 判定。
+    """
+    depth = 0
+    stack: list[int] = []
+    quote: str | None = None
+    index = 0
+    while index < len(sql):
+        char = sql[index]
+        if quote:
+            if char == quote:
+                # SQL 里连续两个引号是转义，不算闭合
+                if index + 1 < len(sql) and sql[index + 1] == quote:
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+        if char in ("'", '"'):
+            quote = char
+        elif char == "(":
+            stack.append(index)
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth < 0:
+                return f"第 {index + 1} 个字符处有多余的右括号", index
+            stack.pop()
+        index += 1
+    if quote:
+        return f"引号从第 {sql.rfind(quote) + 1} 个字符开始未闭合", sql.rfind(quote)
+    if depth > 0:
+        opened = stack[0] if stack else 0
+        return f"缺少 {depth} 个右括号，第 {opened + 1} 个字符处的 '(' 未闭合", opened
+    return None
+
+
 def validate_sql(sql: str) -> str:
     """校验并返回原 SQL；任何违规直接抛 SQL_REJECTED（含可读原因 + 修复建议）。"""
     if not isinstance(sql, str) or not sql.strip():
@@ -113,10 +160,22 @@ def validate_sql(sql: str) -> str:
             "请拆分查询或减少注释",
         )
 
+    unbalanced = _balance_issue(sql)
+    if unbalanced:
+        message, position = unbalanced
+        raise _reject(
+            f"SQL 括号/引号不配平：{message}",
+            f"出错位置附近：{_snippet(sql, position)}。请补齐括号或改写为更短的等价查询",
+        )
+
     try:
         statements = sqlglot.parse(sql, read="duckdb")
     except ParseError as exc:
-        raise _reject(f"SQL 无法解析（{str(exc).splitlines()[0]}）", "请检查语法") from exc
+        first_line = str(exc).splitlines()[0]
+        raise _reject(
+            f"SQL 无法解析（{first_line}）",
+            "请检查语法；若 SQL 很长，优先整条重写成更短的等价查询，而不是局部打补丁",
+        ) from exc
 
     # 纯注释/结尾分号会被解析成 Semicolon 节点，不算第二条语句
     parsed = [
