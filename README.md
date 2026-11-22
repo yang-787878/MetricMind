@@ -5,7 +5,7 @@
 最后生成一份**每个数字都能回溯到具体工具执行结果**的可视化报告。
 
 - **计划可见**：分析计划（步骤 / 工具 / 预期输出 / 验证方式）在执行前就展示给用户。
-- **计算受控**：7 个工具的参数经 Pydantic 校验，SQL 过 sqlglot 只读守卫，模型不执行任意代码。
+- **计算受控**：8 个工具的参数经 Pydantic 校验，SQL 过 sqlglot 只读守卫，模型不执行任意代码。
 - **数字可审**：每次工具调用产出 `result_id`，报告结论绑定证据；独立审计器逐条核对数字。
 - **导出可离线**：HTML 报告是完全自包含单文件（内联 CSS + 内联 SVG，无外链无 JS）。
 
@@ -161,7 +161,7 @@ flowchart LR
   F --> R["Runner<br/>Semaphore(2) · 取消 · 超时"]
   R --> G[LangGraph StateGraph]
   G --> N[intake → inspect → plan → execute → verify → report → audit → finalize]
-  N --> T[7 个受控工具]
+  N --> T[8 个受控工具]
   T --> D[(DuckDB in-memory<br/>视图 data)]
   T --> P[pandas 指标 / 图表]
   R --> S[(SQLite<br/>datasets/runs/events/results/artifacts)]
@@ -206,13 +206,14 @@ stateDiagram-v2
 
 ---
 
-## 6. 七个工具
+## 6. 八个工具
 
 | 工具 | 用途 | 关键参数 | 安全 / 预算限制 | 产出 result_id |
 |---|---|---|---|---|
 | `inspect_dataset` | 字段探查：类型、语义、缺失、样例、时间范围 | `dataset_id, sample_rows≤5` | 每 run ≤2 次 | 是 |
 | `profile_dataset` | 质量剖析：空值/唯一值/极值/P95/异常值 + 8 类问题码 | `dataset_id, columns?, include_outliers` | 每 run ≤2 次 | 是 |
 | `query_data` | 只读 SQL（视图 `data`） | `sql≤4000, max_rows≤500` | sqlglot AST 守卫 + DuckDB 禁外部访问；≤6 次 | 是 |
+| `share_distribution` | 固定的占比变化分布（口径写死，保证多次运行同数） | `dimension, metric, period_column, base_period, current_period, top_n≤20` | 服务端拼装 SQL，自动排除 canceled/unavailable；≤2 次 | 是 |
 | `calculate_metrics` | 11 种确定性指标 | `metrics[]`（kind/column/group_by/filters…） | pandas 计算，除零返回 null+warning；≤8 次 | 是 |
 | `create_chart` | 由结果集生成 `ChartSpec` | `from_result_id, type, x, y, series?` | 必须引用真实 `result_id`，列必须存在；≤5 次 | 是 |
 | `verify_result` | 数字溯源审计 | `claims[]`（含 numbers/evidence_ids） | 只读证据池；≤3 次 | 否 |

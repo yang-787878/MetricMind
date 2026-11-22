@@ -21,6 +21,7 @@ from .tools import (
     inspect_dataset,
     profile_dataset,
     query_data,
+    share_distribution,
     verify_result,
 )
 
@@ -71,6 +72,7 @@ TOOLS: dict[str, ToolSpec] = {
         inspect_dataset,
         profile_dataset,
         query_data,
+        share_distribution,
         calculate_metrics,
         create_chart,
         verify_result,

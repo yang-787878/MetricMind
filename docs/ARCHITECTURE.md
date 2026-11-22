@@ -21,7 +21,7 @@
 | 导出 | `app/services/exporter.py` | Jinja2 HTML/Markdown、artifact 落库、幂等复用 | 内容生成 |
 | 存储 | `app/services/store.py` | SQLite schema、CRUD、事件 seq 事务内自增、重启清理 | 缓存 |
 | LLM | `app/llm/*` | Protocol、OpenAI 兼容实现（退避重试）、Fake、提示词、工厂 | 业务决策 |
-| Agent | `app/agent/*` | 状态、运行上下文、LangGraph 装配、11 个节点、7 个工具、Demo 规划器 | HTTP |
+| Agent | `app/agent/*` | 状态、运行上下文、LangGraph 装配、11 个节点、8 个工具、Demo 规划器 | HTTP |
 | 前端 | `frontend/src/*` | 四页面、SSE 接入、图表渲染、导出、状态完备 | 任何计算 |
 
 ## 2. 一次运行（创建 → 终态）

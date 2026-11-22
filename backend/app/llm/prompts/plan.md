@@ -46,70 +46,18 @@
    且被引用的 metric 必须带 `group_by`（标量结果没有分组，画不出图）。
 5. 若问题需要的字段在 `dataset` 中不存在，必须写进 `out_of_scope` 并降低目标，**不得虚构字段**。
 6. 数值必须由工具计算；不要在计划里写任何具体数字结论。
-7. 若问题要求「分布 / 占比变化 / 同比 / 对比 / 每一类」这类多取值比较，除了明细之外**必须有一条 `query_data` 聚合步骤**，
-   直接产出分布摘要（一行）：参与比较的分组数、上升/下降/持平各多少个、最小值/中位数/最大值、前 N 名合计或占全部上升量的比例。
-   只返回"每个分组一行明细"不算回答"分布"——报告没有摘要就只能逐条罗列。
-   该步骤的 `expected_output` 写"一行分布摘要（计数 + 分位数 + 集中度）"，`validation` 写"up + down + flat = 分组数"。
-   SQL 必须是对视图 `data` 的单条只读 SELECT，列名取自 `dataset.columns` 的真实列名。
-   **口径选择**：问题说「分布 / 占比变化 / 结构」时用占比变化（各分组占整体的比例之差）；
-   说「同比 / 增长 / 变化率」时用同比变化率；两者同时出现时默认占比口径，并在 `assumptions` 里写清用哪个口径、另一个只作补充。
-   **占比分布的固定口径（不得自行更换分母，否则同一问题两次运行数字会不一致）**：
-   ① 分组集合 = 两期出现过的分组并集；只在一期出现的分组，另一期按销售额 0 计（它会自然成为 0 → x 的上升组）；
-   ② 占比 = 该分组当期销售额 / 当期并集内全部销售额之和；
-   ③ `share_change = 当期占比 − 基期占比`，上升/下降/持平按它的符号判定；
-   ④ 摘要里额外输出 `only_in_latest` / `only_in_base` 这类"只在一期出现"的分组数，供报告说明；
-   ⑤ 仅当问题明确要求「可比 / 同店 / 两期都有」时，才改用"两期均存在"的内连接口径，并在 assumptions 写清。
-
-   **摘要 SQL 必须复制下面这个结构**，只替换 `<...>` 占位符（列名、期间值、过滤条件），
-   不得改子查询结构、分母定义或聚合方式：
-
-   ```
-   WITH base AS (
-     SELECT <dimension> AS grp, <period_column> AS period, SUM(<metric>) AS v
-     FROM data
-     WHERE <period_column> IN ('<base>','<current>') AND <status_filter>
-     GROUP BY 1, 2
-   ), piv AS (
-     SELECT grp,
-            COALESCE(MAX(CASE WHEN period = '<base>' THEN v END), 0) AS base_v,
-            COALESCE(MAX(CASE WHEN period = '<current>' THEN v END), 0) AS cur_v
-     FROM base GROUP BY grp
-   ), tot AS (
-     SELECT SUM(base_v) AS base_total, SUM(cur_v) AS cur_total FROM piv
-   ), s AS (
-     SELECT grp, base_v, cur_v,
-            cur_v / cur_total - base_v / base_total AS share_change
-     FROM piv CROSS JOIN tot
-   ), r AS (
-     SELECT base_v, cur_v, share_change,
-            ROW_NUMBER() OVER (ORDER BY share_change DESC) AS rk FROM s
-   )
-   SELECT COUNT(*) AS group_count,
-          SUM(CASE WHEN share_change > 0 THEN 1 ELSE 0 END) AS up_count,
-          SUM(CASE WHEN share_change < 0 THEN 1 ELSE 0 END) AS down_count,
-          SUM(CASE WHEN base_v = 0 THEN 1 ELSE 0 END) AS only_in_latest,
-          SUM(CASE WHEN cur_v = 0 THEN 1 ELSE 0 END) AS only_in_base,
-          MIN(share_change) AS min_share_change,
-          MEDIAN(share_change) AS median_share_change,
-          MAX(share_change) AS max_share_change,
-          SUM(CASE WHEN share_change > 0 THEN share_change ELSE 0 END) AS positive_sum,
-          SUM(CASE WHEN rk <= 5 AND share_change > 0 THEN share_change ELSE 0 END) AS top5_positive,
-          CASE WHEN SUM(CASE WHEN share_change > 0 THEN share_change ELSE 0 END) > 0
-               THEN SUM(CASE WHEN rk <= 5 AND share_change > 0 THEN share_change ELSE 0 END)
-                    / SUM(CASE WHEN share_change > 0 THEN share_change ELSE 0 END)
-          END AS top5_share
-   FROM r
-   ```
-
-   需要逐分组明细（图表用）时，复用同一组 `base / piv / tot` CTE，
-   只把最后一个 SELECT 换成 `SELECT grp AS <dimension>, base_v, cur_v,
-   cur_v / cur_total - base_v / base_total AS share_change FROM piv CROSS JOIN tot
-   ORDER BY share_change DESC`。
-
-   `<status_filter>` 的取值规则同样固定：`dataset.columns` 里有 `order_status` 列时写
-   `order_status NOT IN ('canceled','unavailable')`；有 `status` 列时写
-   `status NOT IN ('canceled','cancelled','unavailable')`；两者都没有时写 `1 = 1`。
-   不要按问题措辞增删状态，否则两次运行的分母会不同。
+7. 若问题要求「分布 / 占比变化 / 同比分布 / 每一类的占比变化」，**必须用 `share_distribution` 工具**产出分布步骤：
+   参数：`dataset_id`、`dimension`（分组列）、`metric`（求和指标）、`period_column`（期间列）、
+   `base_period` / `current_period`（两个期间取值）、`top_n`（默认 5）。
+   它的口径在服务端写死（两期并集、缺失期按 0 计、占比=组销售额/当期合计、自动排除 canceled/cancelled/unavailable），
+   返回两类结果：`summary`（分组数、上升/下降/持平计数、min/中位数/max、前 N 名占比）与
+   `rows`（逐分组明细，列含 `<dimension>` 与 `share_change`）。
+   **不要再自己写等价 SQL**：同一问题两次运行必须给出同一组数字，而自由 SQL 会在过滤条件/分母上漂移。
+   该步骤的 `expected_output` 写"逐分组占比变化明细 + 一行分布摘要"，`validation` 写"up + down + flat = group_count"。
+8. 报告里画"每一类"的明细图时，`create_chart` 引用 `share_distribution` 那一步的 result_id，
+   `x` 用 `dimension`、`y` 用 `share_change`、`limit_points` 设为明细行数（≤200），副标题不要写"前 N 个"。
+   若问题确实需要另一种口径（例如只统计"两期都存在"的可比分组），才允许退回 `query_data` 手写 SQL，
+   并在 `assumptions` 里写清口径差异。
 9. 若问题要求全量清单（「每一类 / 每个 / 全部 / 列出所有」），承载明细的 `create_chart` 必须覆盖全部行：
    `limit_points` 设为目标行数（上限 200），副标题不要写"前 N 个"。可读性靠排序解决，不要靠截断——
    否则正文写"完整明细见图表区表格"就是对读者的谎言。

@@ -56,7 +56,7 @@
 
 ## 简历条目（数字必须实测，未测的标 `【待实测】`）
 
-- 设计并实现基于 LangGraph 的 Plan-and-Execute 数据分析 Agent：7 个受控工具、`result_id` 证据链、
+- 设计并实现基于 LangGraph 的 Plan-and-Execute 数据分析 Agent：8 个受控工具、`result_id` 证据链、
   数字溯源审计；报告结论可逐条回溯至工具执行结果，复算用 9 条金标准用例（mock 通过率 **100%**）。
 - 通过 sqlglot AST 白名单 + DuckDB 执行隔离（禁外部访问/扩展）实现只读查询沙箱，覆盖 **39** 个攻击用例；
   后端 pytest **127** 例通过，前端 vitest **31** 例 + Playwright **3** 条 E2E 通过。

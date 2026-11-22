@@ -219,7 +219,47 @@
 - Markdown：GFM 表格，图表以数据表呈现；
 - 幂等：同一 run 同一格式复用 `art_<run尾号>_<format>`，重复导出覆盖同一文件。
 
-## 8. 错误码（工具层）
+## 8. `share_distribution`
+
+用途：回答「分布 / 占比变化 / 每一类占比如何变」这类问题。**口径写死在服务端**，同一组参数必然给出同一组数字，
+避免模型现场写 SQL 时在过滤条件、分母上漂移（实测会得到 37 升/35 降 与 38 升/34 降两种结果）。
+
+输入：
+
+| 参数 | 说明 |
+|---|---|
+| `dataset_id` | 数据集 |
+| `dimension` | 分组列，如 `product_category` |
+| `metric` | 求和指标列，如 `item_total` |
+| `period_column` | 期间列，如 `order_month` |
+| `base_period` / `current_period` | 两个期间取值，如 `2017-08` / `2018-08` |
+| `top_n` | 集中度取前 N 名，默认 5，上限 20 |
+
+固定口径：两期分组并集、缺失一期按 0 计；占比 = 组销售额 / 当期合计；`share_change = 当期占比 − 基期占比`；
+存在 `order_status` / `status` 列时自动排除 `canceled` / `cancelled` / `unavailable`。
+
+返回：
+
+```json
+{"ok": true, "result_id": "res_...", "data": {
+  "summary": {"group_count": 72, "up_count": 38, "down_count": 34, "flat_count": 0,
+              "only_in_current": 8, "only_in_base": 6,
+              "min_share_change": -0.0485, "median_share_change": 0.00024,
+              "max_share_change": 0.0523, "positive_sum": 0.2607,
+              "top_n_positive": 0.1491, "top_n_share": 0.5720},
+  "columns": [{"name": "product_category", "type": "VARCHAR"},
+              {"name": "base_v", "type": "DOUBLE"}, {"name": "cur_v", "type": "DOUBLE"},
+              {"name": "base_share", "type": "DOUBLE"}, {"name": "cur_share", "type": "DOUBLE"},
+              {"name": "share_change", "type": "DOUBLE"}],
+  "rows": [["health beauty", 56191.4, 136823.27, 0.0849, 0.1372, 0.0523]],
+  "row_count": 72, "truncated": false
+}}
+```
+
+`summary` 放在 `data` 最前面：证据提取按遍历顺序取数，这样摘要里的 12 个数不会被明细行挤出截断窗口。
+`rows` 可直接给 `create_chart`（`x=dimension`、`y=share_change`、`limit_points≥行数`）。
+
+## 9. 错误码（工具层）
 
 | code | 可重试 | 触发 |
 |---|---|---|

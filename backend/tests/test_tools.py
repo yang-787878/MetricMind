@@ -8,11 +8,12 @@ from app.agent.registry import TOOLS, execute_tool
 from app.errors import ErrorCode
 
 
-async def test_seven_tool_contract_registered() -> None:
+async def test_tool_contract_registered() -> None:
     assert set(TOOLS) == {
         "inspect_dataset",
         "profile_dataset",
         "query_data",
+        "share_distribution",
         "calculate_metrics",
         "create_chart",
         "verify_result",
@@ -28,7 +29,59 @@ async def test_seven_tool_contract_registered() -> None:
 
     planner_names = {schema["name"] for schema in tool_schemas(planner_only=True)}
     assert "export_report" not in planner_names
-    assert len(planner_names) == 6
+    assert len(planner_names) == 7
+
+
+async def test_share_distribution_summary_and_rows(ctx) -> None:
+    envelope = await execute_tool(
+        ctx,
+        "share_distribution",
+        {
+            "dataset_id": ctx.dataset_id,
+            "dimension": "category",
+            "metric": "revenue",
+            "period_column": "order_date",
+            "base_period": "2025-01-01",
+            "current_period": "2025-01-04",
+        },
+    )
+    assert envelope.ok, envelope.error
+    data = envelope.data
+    summary = data["summary"]
+    assert summary["group_count"] == 2
+    assert summary["up_count"] == 1
+    assert summary["down_count"] == 1
+    assert summary["flat_count"] == 0
+    # 两个日期都同时存在 Home / Apparel，因此没有"只在一期出现"的分组
+    assert summary["only_in_current"] == 0
+    assert summary["only_in_base"] == 0
+    columns = [column["name"] for column in data["columns"]]
+    assert columns[0] == "category"
+    assert "share_change" in columns
+    assert len(data["rows"]) == 2
+    # 排序：share_change 降序，第一行是上升组
+    assert data["rows"][0][columns.index("share_change")] > 0
+    assert data["rows"][1][columns.index("share_change")] < 0
+    assert abs(
+        sum(row[columns.index("share_change")] for row in data["rows"])
+    ) < 1e-9
+
+
+async def test_share_distribution_rejects_unknown_column(ctx) -> None:
+    envelope = await execute_tool(
+        ctx,
+        "share_distribution",
+        {
+            "dataset_id": ctx.dataset_id,
+            "dimension": "nope",
+            "metric": "revenue",
+            "period_column": "order_date",
+            "base_period": "2025-01-01",
+            "current_period": "2025-01-04",
+        },
+    )
+    assert not envelope.ok
+    assert envelope.error.code == ErrorCode.INVALID_COLUMN.value
 
 
 async def test_inspect_dataset_success(ctx) -> None:

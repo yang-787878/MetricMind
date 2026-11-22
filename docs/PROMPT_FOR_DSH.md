@@ -41,8 +41,8 @@ MetricMind —— 自然语言提问 → Agent 输出结构化分析计划 → �
    支持单步修复（`repair_step`：工具参数错误时修正后重试，修不好就跳过）、
    条件重规划（`replan`：verify 发现失败或无证据且还有重规划余量）、
    预算耗尽降级（`finalize` + `partial` 状态 + `budget_warning` 事件）。
-2. **7 个受控工具**，每个都有 Pydantic 参数 schema 和"每 run 调用次数上限"：
-   `inspect_dataset`(≤2) / `profile_dataset`(≤2) / `query_data`(≤6) / `calculate_metrics`(≤8) /
+2. **8 个受控工具**，每个都有 Pydantic 参数 schema 和"每 run 调用次数上限"：
+   `inspect_dataset`(≤2) / `profile_dataset`(≤2) / `query_data`(≤6) / `share_distribution`(≤2) / `calculate_metrics`(≤8) /
    `create_chart`(≤5) / `verify_result`(≤3) / `export_report`(≤2)。
    产出数据或图表的工具会生成 `result_id`，进入证据池。
 3. **四道数据真实性关卡**（这是项目最核心的设计）：
