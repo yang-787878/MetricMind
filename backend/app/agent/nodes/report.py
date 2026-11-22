@@ -105,6 +105,25 @@ async def _llm_report(
     raise ValueError(last_error or "模型未能产出合法的报告草稿")
 
 
+def _canonicalize_draft(draft: dict[str, Any], ctx: RunContext) -> None:
+    """把草稿里缩写/截断的 result_id 还原成证据池里的完整 id。
+
+    模型偶尔把 res_bbf9657956ff 写成 res_bbf；若原样落库，审计会判"证据不存在"、
+    整份报告覆盖率掉到 0。前缀唯一时才回写，报告展示与分析用同一串 id。
+    """
+
+    def fix(value: Any) -> str:
+        text = str(value)
+        return ctx.evidence.canonical_result_id(text) or text
+
+    for claim in draft.get("claims") or []:
+        if isinstance(claim, dict) and isinstance(claim.get("evidence_ids"), list):
+            claim["evidence_ids"] = [fix(value) for value in claim["evidence_ids"]]
+    for section in draft.get("sections") or []:
+        if isinstance(section, dict) and isinstance(section.get("evidence_ids"), list):
+            section["evidence_ids"] = [fix(value) for value in section["evidence_ids"]]
+
+
 async def report(state: AgentState, ctx: RunContext) -> dict[str, Any]:
     ctx.check_cancel()
     warnings = list(state.get("warnings") or [])
@@ -136,6 +155,8 @@ async def report(state: AgentState, ctx: RunContext) -> dict[str, Any]:
                 feedback=["叙述生成失败，以下内容为确定性模板输出"],
             )
             draft["narrative_source"] = "template"
+            _canonicalize_draft(draft, ctx)
             return {"draft": draft, "warnings": warnings, "status": "partial"}
 
+    _canonicalize_draft(draft, ctx)
     return {"draft": draft, "warnings": warnings}

@@ -90,45 +90,9 @@ def _collect_kpis(
                 if len(kpis) >= MAX_KPIS:
                     return kpis
 
-    # 分组指标（如按月汇总）没有标量 value，只有 groups；取最新一期作为 KPI，
-    # 只做取值不做算术，避免图表齐全但 KPI 区一片空白的报告。
-    for step in steps:
-        if step.get("status") != "succeeded":
-            continue
-        for record in step.get("tool_calls", []):
-            result_id = record.get("result_id")
-            if not result_id or result_id not in evidence:
-                continue
-            payload = evidence[result_id]
-            if payload.get("tool") != "calculate_metrics":
-                continue
-            for metric in (payload.get("data") or {}).get("metrics", []):
-                groups = [
-                    group
-                    for group in metric.get("groups") or []
-                    if group.get("value") is not None
-                ]
-                if metric.get("value") is not None or not groups:
-                    continue
-                latest = groups[-1]
-                key = " / ".join(str(part) for part in (latest.get("key") or {}).values())
-                unit = metric.get("unit")
-                value = float(latest["value"])
-                kpis.append(
-                    Kpi(
-                        label=f"{_human_metric(str(metric.get('name', '指标')))}（{key}）"
-                        if key
-                        else _human_metric(str(metric.get("name", "指标"))),
-                        value=value,
-                        unit=unit,
-                        delta=None,
-                        delta_label=None,
-                        evidence_ids=[result_id],
-                        display_value=format_value(value, unit),
-                    )
-                )
-                if len(kpis) >= MAX_KPIS:
-                    return kpis
+    # 只收"标量指标"作为 KPI。分组指标（按月/按品类的 groups）没有唯一的标量值，
+    # 从里面随手取"最后一组"会得到与问题无关的卡（如某品类某月的销售额），
+    # 比空着更误导人；没有标量指标时就让 KPI 区留空。
     return kpis
 
 

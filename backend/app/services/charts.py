@@ -108,6 +108,13 @@ def table_from_result(result_id: str, payload: dict[str, Any]) -> tuple[list[str
     )
 
 
+def _numeric_or_none(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _sort_rows(rows: list[dict[str, Any]], sort_by: str | None, x_key: str, y_key: str) -> list[dict[str, Any]]:
     if not sort_by:
         return rows
@@ -118,13 +125,18 @@ def _sort_rows(rows: list[dict[str, Any]], sort_by: str | None, x_key: str, y_ke
     def key(row: dict[str, Any]) -> tuple[bool, Any]:
         value = row.get(field)
         if numeric:
-            try:
-                return (value is None, float(value))
-            except (TypeError, ValueError):
-                return (True, 0.0)
+            number = _numeric_or_none(value)
+            return (number is None, number if number is not None else 0.0)
         return (value is None, str(value))
 
-    return sorted(rows, key=key, reverse=reverse)
+    ordered = sorted(rows, key=key, reverse=reverse)
+    if numeric:
+        # 排序键把空值记为"最大"，reverse=True 时会被顶到最前；对读者来说
+        # 无值行应该沉底，否则"按变化率降序"的表格开头全是空行。
+        ordered = [
+            row for row in ordered if _numeric_or_none(row.get(field)) is not None
+        ] + [row for row in ordered if _numeric_or_none(row.get(field)) is None]
+    return ordered
 
 
 def build_chart_spec(

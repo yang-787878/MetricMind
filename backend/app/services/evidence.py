@@ -108,6 +108,23 @@ class EvidencePool:
     def exists(self, result_id: str) -> bool:
         return self.get(result_id) is not None
 
+    def canonical_result_id(self, result_id: str) -> str | None:
+        """把模型写的短 id（如 res_bbf）还原成池里的完整 result_id。
+
+        报告生成时模型偶尔会缩写/截断 result_id：若直接判"证据不存在"，整条
+        claim 会变成 unsupported、覆盖率掉到 0。只有前缀唯一时才还原，
+        唯一的映射才敢回写，避免把两个结果混成一个。
+        """
+        text = str(result_id or "").strip()
+        if not text:
+            return None
+        if self.exists(text):
+            return text
+        if len(text) < 4:
+            return None
+        matches = [known for known in self.all_ids() if known.startswith(text)]
+        return matches[0] if len(matches) == 1 else None
+
     def summary(self, result_id: str) -> dict[str, Any]:
         payload = self.get(result_id) or {}
         numbers = extract_numbers(payload.get("data"))

@@ -32,6 +32,78 @@ def _metrics_step(step_id: str, title: str, intent: str, metrics: list[dict[str,
 
 MONEY_HINTS = ("revenue", "sales", "amount", "gmv", "销售额", "收入", "profit", "cost", "price")
 
+DISTRIBUTION_HINTS = ("分布", "占比", "同比", "对比", "每一类", "各类", "结构变化", "变化")
+
+_MONTH_COLUMNS = ("order_month", "month", "年月", "月份")
+
+_DATE_DTYPES = ("str", "object", "datetime", "date", "timestamp")
+
+
+def _period_expr(dataset_meta: dict[str, Any], date_column: str) -> str:
+    """优先用现成的月份列；否则从日期列截前 7 位（YYYY-MM）。"""
+    for column in dataset_meta.get("columns", []):
+        name = str(column.get("name") or "")
+        if name.lower() in _MONTH_COLUMNS:
+            return f'"{name}"'
+    return f'substr(CAST("{date_column}" AS VARCHAR), 1, 7)'
+
+
+def _distribution_step(
+    step_id: str,
+    *,
+    dataset_meta: dict[str, Any],
+    dimension: str,
+    metric: str,
+    date_column: str,
+) -> dict[str, Any]:
+    """Demo 模式的分布摘要步骤：一条 SQL 直接算出计数/分位数/集中度。
+
+    与 Live 模式同一约束：数字只能由工具产生，模板只负责排版。
+    """
+    period = _period_expr(dataset_meta, date_column)
+    sql = f"""WITH base AS (
+  SELECT "{dimension}" AS dim, {period} AS period, SUM("{metric}") AS v
+  FROM data GROUP BY 1, 2
+), ranked AS (
+  SELECT dim, period, v, DENSE_RANK() OVER (ORDER BY period DESC) AS rn FROM base
+), piv AS (
+  SELECT dim,
+         MAX(CASE WHEN rn = 1 THEN v END) AS v_latest,
+         MAX(CASE WHEN rn = 2 THEN v END) AS v_prev
+  FROM ranked WHERE rn <= 2 GROUP BY dim
+), tot AS (
+  SELECT SUM(v_latest) AS t_latest, SUM(v_prev) AS t_prev FROM piv
+), s AS (
+  SELECT p.dim,
+         (CASE WHEN t.t_latest > 0 THEN p.v_latest / t.t_latest ELSE 0 END)
+       - (CASE WHEN t.t_prev > 0 THEN p.v_prev / t.t_prev ELSE 0 END) AS share_change
+  FROM piv p CROSS JOIN tot t
+), r AS (
+  SELECT share_change, ROW_NUMBER() OVER (ORDER BY share_change DESC) AS rk FROM s
+)
+SELECT COUNT(*) AS group_count,
+       SUM(CASE WHEN share_change > 0 THEN 1 ELSE 0 END) AS up_count,
+       SUM(CASE WHEN share_change < 0 THEN 1 ELSE 0 END) AS down_count,
+       MIN(share_change) AS min_share_change,
+       MEDIAN(share_change) AS median_share_change,
+       MAX(share_change) AS max_share_change,
+       SUM(CASE WHEN share_change > 0 THEN share_change ELSE 0 END) AS positive_sum,
+       SUM(CASE WHEN rk <= 5 AND share_change > 0 THEN share_change ELSE 0 END) AS top5_positive,
+       CASE WHEN SUM(CASE WHEN share_change > 0 THEN share_change ELSE 0 END) > 0
+            THEN SUM(CASE WHEN rk <= 5 AND share_change > 0 THEN share_change ELSE 0 END)
+                 / SUM(CASE WHEN share_change > 0 THEN share_change ELSE 0 END)
+       END AS top5_share
+FROM r"""
+    return {
+        "step_id": step_id,
+        "title": f"{metric} 按 {dimension} 的占比变化分布",
+        "intent": "先给出分布形态（计数 / 分位数 / 集中度），避免报告只罗列明细",
+        "tool": "query_data",
+        "tool_args_hint": {"dataset_id": None, "sql": sql},
+        "expected_output": "一行分布摘要（计数 + 分位数 + 集中度）",
+        "validation": "up_count + down_count = group_count",
+    }
+
 
 def _pick_metric(candidates: list[str]) -> str | None:
     """优先选"可求和"的金额类指标：revenue/sales 比 unit_price 更适合做总量。"""
@@ -146,6 +218,7 @@ def build_plan(*, question: str, dataset_meta: dict[str, Any]) -> dict[str, Any]
                     "title": f"{metric} 月度趋势",
                     "subtitle": f"口径：{metric} 求和，按 {date_column} 月粒度",
                     "sort_by": "x_asc",
+                    "limit_points": 200,
                 },
                 "expected_output": "引用 s2 结果集的折线图规格",
                 "validation": "图表数据与 s2 返回的行完全一致",
@@ -166,10 +239,31 @@ def build_plan(*, question: str, dataset_meta: dict[str, Any]) -> dict[str, Any]
                     "y": f"{metric}_share_by_{dimension}",
                     "title": f"{metric} 按 {dimension} 占比",
                     "sort_by": "y_desc",
+                    "limit_points": 200,
                 },
                 "expected_output": "引用 s4 结果集的柱状图规格",
                 "validation": "图表数据与 s4 返回的行完全一致",
             }
+        )
+
+    date_meta = _column(columns, date_column) if date_column else None
+    date_dtype = str((date_meta or {}).get("dtype") or "").lower()
+    wants_distribution = any(hint in question for hint in DISTRIBUTION_HINTS)
+    if (
+        wants_distribution
+        and metric
+        and date_column
+        and dimensions
+        and date_dtype in _DATE_DTYPES
+    ):
+        steps.append(
+            _distribution_step(
+                f"s{len(steps) + 1}",
+                dataset_meta=dataset_meta,
+                dimension=dimensions[0],
+                metric=metric,
+                date_column=date_column,
+            )
         )
 
     for step in steps:
@@ -269,6 +363,24 @@ def _latest_group(metric: dict[str, Any]) -> tuple[str, float] | None:
     return label, float(latest["value"])
 
 
+def _distribution_summary(
+    evidence: list[dict[str, Any]],
+) -> tuple[str, dict[str, Any]] | None:
+    """找 Demo 分布步骤产出的一行摘要（列名由 _distribution_step 固定）。"""
+    for item in evidence:
+        if item.get("tool") != "query_data":
+            continue
+        data = item.get("data") or {}
+        columns = [str(column.get("name")) for column in data.get("columns") or []]
+        if "group_count" not in columns or "median_share_change" not in columns:
+            continue
+        rows = data.get("rows") or []
+        if not rows:
+            continue
+        return str(item["result_id"]), dict(zip(columns, rows[0]))
+    return None
+
+
 def build_draft(
     *,
     question: str,
@@ -289,6 +401,56 @@ def build_draft(
     sections: list[dict[str, Any]] = []
     claims: list[dict[str, Any]] = []
     headline_parts: list[str] = []
+
+    distribution = _distribution_summary(evidence)
+    if distribution:
+        result_id, row = distribution
+
+        def _pp(key: str) -> str:
+            value = row.get(key)
+            return "—" if value is None else f"{float(value) * 100:+.2f}pp"
+
+        groups = int(row.get("group_count") or 0)
+        up = int(row.get("up_count") or 0)
+        down = int(row.get("down_count") or 0)
+        body = (
+            f"按占比口径，最近两个周期共有 {groups} 个分组：{up} 个占比上升、{down} 个下降；"
+            f"占比变化中位数 {_pp('median_share_change')}，"
+            f"区间 {_pp('min_share_change')} ~ {_pp('max_share_change')}"
+        )
+        top5_share = row.get("top5_share")
+        if top5_share is not None:
+            body += (
+                f"；前 5 个上升分组的占比变化合计占全部正向变化的 "
+                f"{float(top5_share) * 100:.1f}%"
+            )
+        body += "。"
+        sections.append(
+            {"heading": "分布变化（占比口径）", "body": body, "evidence_ids": [result_id]}
+        )
+        numbers: list[dict[str, Any]] = [
+            {"value": groups, "unit": "count"},
+            {"value": up, "unit": "count"},
+            {"value": down, "unit": "count"},
+        ]
+        for key in (
+            "median_share_change",
+            "min_share_change",
+            "max_share_change",
+            "top5_share",
+        ):
+            value = row.get(key)
+            if value is not None:
+                numbers.append({"value": float(value), "unit": ""})
+        claims.append(
+            {
+                "claim_id": "c_dist",
+                "text": body,
+                "numbers": numbers,
+                "evidence_ids": [result_id],
+            }
+        )
+        headline_parts.append(f"{groups} 个分组中 {up} 个占比上升、{down} 个下降")
 
     if kpi_source:
         result_id, metric = kpi_source
